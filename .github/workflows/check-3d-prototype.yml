@@ -1,0 +1,26 @@
+name: Check 3D prototype
+
+on:
+  push:
+    branches:
+      - prototype-3d-weather
+    paths:
+      - '3d-prototype/**'
+      - '.github/workflows/check-3d-prototype.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check JavaScript syntax
+        run: node --check 3d-prototype/app.js
+      - name: Check required prototype files
+        run: |
+          test -s 3d-prototype/index.html
+          test -s 3d-prototype/app.js
+          grep -q 'three@0.180.0' 3d-prototype/index.html
+      - name: Check Three.js CDN files are reachable
+        run: |
+          curl --fail --silent --show-error --head https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js > /dev/null
+          curl --fail --silent --show-error --head https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js > /dev/null
