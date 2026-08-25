@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D Weather Sandbox Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #07131f;
+      color: #eef7ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #07131f; }
+    body { min-width: 320px; }
+    #app { position: relative; width: 100%; height: 100%; }
+    #scene { display: block; width: 100%; height: 100%; }
+    #loading {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 20;
+      background: radial-gradient(circle at 50% 65%, #315d7e 0%, #10283d 38%, #07131f 72%);
+      font-size: 18px;
+      letter-spacing: .02em;
+      transition: opacity .35s ease;
+    }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    .panel {
+      position: absolute;
+      z-index: 10;
+      background: rgba(5, 13, 21, .82);
+      border: 1px solid rgba(190, 220, 240, .18);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 14px 40px rgba(0,0,0,.28);
+    }
+    #controls {
+      left: 16px;
+      top: 16px;
+      width: min(360px, calc(100vw - 32px));
+      padding: 16px;
+      border-radius: 16px;
+      max-height: calc(100% - 32px);
+      overflow: auto;
+    }
+    #stats {
+      right: 16px;
+      top: 16px;
+      min-width: 230px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    h1 { margin: 0 0 4px; font-size: 22px; line-height: 1.1; }
+    .sub { color: #aac4d8; font-size: 12px; margin: 0 0 14px; line-height: 1.45; }
+    .warning {
+      border: 1px solid rgba(255, 193, 91, .28);
+      background: rgba(255, 174, 52, .08);
+      color: #ffdba1;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      margin-bottom: 14px;
+    }
+    .group { margin-top: 13px; padding-top: 12px; border-top: 1px solid rgba(190,220,240,.12); }
+    .group:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+    label { display: block; font-size: 12px; color: #cce0ee; margin: 10px 0 4px; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+    .value { min-width: 54px; text-align: right; color: #fff; font-weight: 700; font-size: 12px; }
+    input[type="range"] { width: 100%; accent-color: #45a8ff; }
+    select, button {
+      appearance: none;
+      border: 1px solid rgba(190,220,240,.22);
+      background: rgba(255,255,255,.07);
+      color: #eef7ff;
+      border-radius: 9px;
+      min-height: 36px;
+      padding: 7px 10px;
+      font: inherit;
+    }
+    select { width: 100%; }
+    option { background: #0b1a27; color: #fff; }
+    button { cursor: pointer; font-weight: 700; }
+    button:hover { background: rgba(255,255,255,.12); }
+    button.primary { background: #167ac6; border-color: #2599ef; }
+    button.primary:hover { background: #1b8bdd; }
+    .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .buttons .wide { grid-column: 1 / -1; }
+    .toggle { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12px; color: #cce0ee; }
+    .toggle input { accent-color: #45a8ff; }
+    #stats .title { color: #9fc0d8; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; margin-bottom: 8px; }
+    .statline { display: flex; justify-content: space-between; gap: 16px; font-size: 12px; padding: 3px 0; }
+    .statline span:first-child { color: #9fb6c8; }
+    .statline strong { color: #fff; }
+    #status { margin-top: 9px; color: #86d7ff; font-size: 11px; line-height: 1.35; }
+    #hint {
+      position: absolute;
+      z-index: 8;
+      left: 50%;
+      bottom: 14px;
+      transform: translateX(-50%);
+      background: rgba(5,13,21,.66);
+      border: 1px solid rgba(190,220,240,.12);
+      border-radius: 999px;
+      padding: 7px 12px;
+      color: #c7d9e5;
+      font-size: 11px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    @media (max-width: 800px) {
+      #controls { width: min(330px, calc(100vw - 24px)); left: 12px; top: 12px; max-height: calc(100% - 24px); }
+      #stats { display: none; }
+      #hint { display: none; }
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script>
+    function setStatus(message) {
+      const element = document.getElementById('status');
+      if (element)
+        element.textContent = message;
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene" aria-label="Interactive 3D atmospheric simulation"></canvas>
+    <div id="loading">Booting tiny 3D atmosphere… 🌩️</div>
+
+    <section id="controls" class="panel" aria-label="Simulation controls">
+      <h1>3D Weather Sandbox</h1>
+      <p class="sub">A deliberately stripped-down 3D prototype inspired by the 2D sandbox. Orbit the camera and watch a simplified convective storm grow through a real 3D atmosphere.</p>
+      <div class="warning"><strong>Prototype:</strong> this is physics-lite, not CM1 and not a literal 3D port of the original solver. It keeps the idea: interactive atmosphere, moisture, buoyancy, condensation, wind shear and terrain.</div>
+
+      <div class="group">
+        <label for="preset">Scenario</label>
+        <select id="preset">
+          <option value="supercell">Supercell-ish / strong shear</option>
+          <option value="pulse">Pulse thunderstorm</option>
+          <option value="multicell">Multicell line</option>
+          <option value="dry">Dry convection</option>
+        </select>
+      </div>
+
+      <div class="group">
+        <label for="moisture">Low-level moisture</label>
+        <div class="row"><input id="moisture" type="range" min="0.35" max="0.95" step="0.01" value="0.78"><span id="moistureValue" class="value">78%</span></div>
+
+        <label for="instability">Instability / buoyancy</label>
+        <div class="row"><input id="instability" type="range" min="0.5" max="2.2" step="0.05" value="1.45"><span id="instabilityValue" class="value">1.45×</span></div>
+
+        <label for="shear">0–12 km wind shear</label>
+        <div class="row"><input id="shear" type="range" min="0" max="1.4" step="0.05" value="0.9"><span id="shearValue" class="value">0.90</span></div>
+
+        <label for="rotation">Updraft rotation bias</label>
+        <div class="row"><input id="rotation" type="range" min="0" max="1.5" step="0.05" value="0.85"><span id="rotationValue" class="value">0.85</span></div>
+      </div>
+
+      <div class="group">
+        <label for="terrain">Terrain relief</label>
+        <div class="row"><input id="terrain" type="range" min="0" max="1.8" step="0.05" value="0.35"><span id="terrainValue" class="value">0.35 km</span></div>
+
+        <label for="speed">Simulation speed</label>
+        <div class="row"><input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span id="speedValue" class="value">1.00×</span></div>
+
+        <label class="toggle"><input id="showGrid" type="checkbox" checked> Show model-domain grid</label>
+      </div>
+
+      <div class="buttons">
+        <button id="pause" type="button">Pause</button>
+        <button id="reset" type="button">Reset</button>
+        <button id="bubble" class="primary wide" type="button">🔥 Trigger warm moist bubble</button>
+      </div>
+      <div id="status">Initializing…</div>
+    </section>
+
+    <aside id="stats" class="panel" aria-label="Simulation diagnostics">
+      <div class="title">Live diagnostics</div>
+      <div class="statline"><span>Model time</span><strong id="simTime">0.0 min</strong></div>
+      <div class="statline"><span>Cloud voxels</span><strong id="cloudCells">0</strong></div>
+      <div class="statline"><span>Max updraft</span><strong id="maxUpdraft">0.0 m/s</strong></div>
+      <div class="statline"><span>Cloud top</span><strong id="cloudTop">0.0 km</strong></div>
+      <div class="statline"><span>Rain particles</span><strong id="rainCount">0</strong></div>
+    </aside>
+
+    <div id="hint">Drag to orbit • wheel to zoom • Space pause • R reset</div>
+  </div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
