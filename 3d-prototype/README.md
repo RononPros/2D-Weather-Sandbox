@@ -1,36 +1,43 @@
-# 3D Weather Sandbox Prototype
+# 3D Weather Sandbox
 
-This is an experimental, intentionally simplified 3D offshoot of the 2D Weather Sandbox.
+This folder contains the interactive 3D version of the Weather Sandbox. It follows the original 2D game's sandbox-first design: create an environment, edit the atmosphere directly, switch scientific display layers, inspect cells, and save the result.
 
-It is **not** a direct 3D conversion of the original solver and it is **not** a research model like CM1. The goal is to test the user experience and visual idea of an interactive 3D atmospheric sandbox before attempting a serious GPU compute implementation.
+## Included
 
-## What is included
+- Editable 24–80 km square domain with a 10–20 km model top
+- Fast, balanced and detailed 3D grids
+- Prognostic horizontal and vertical wind, temperature, vapor, cloud water, rain, ice and pressure anomaly fields
+- Semi-Lagrangian 3D transport
+- Buoyancy, condensate loading, condensation, evaporation, rain/ice conversion and melting
+- Terrain-forced uplift, ocean moisture/temperature forcing, fire heat sources and sea-breeze forcing
+- Supercell, mountain-uplift, sea-breeze and empty scenarios
+- Direct 3D brush tools for temperature, moisture, updrafts, horizontal wind, land, sea and fire
+- Ctrl-inverted tools, whole-column painting and adjustable brush altitude
+- Realistic, temperature, humidity, horizontal wind, vertical wind, pressure and precipitation displays
+- Orbit camera, cell inspector, wind-vector overlay, storm diagnostics and a day/night cycle
+- Horizontal boundary wrapping
+- Local `.weather3d` save/load support
+- Adaptive render sampling
 
-- 32 km x 32 km x 12 km 3D model domain
-- 40 x 40 x 24 simplified atmospheric grid
-- temperature anomaly, water vapor, cloud condensate and vertical velocity fields
-- approximate condensation / evaporation and latent heating
-- buoyancy and condensate loading
-- prescribed directional wind shear
-- optional imposed rotating updraft bias for the `Supercell-ish` preset
-- simplified rain particles
-- 3D terrain boundary
-- interactive orbit camera
-- pulse, multicell, dry-convection and supercell-ish presets
-- warm/moist bubble trigger
-- live cloud-top and updraft diagnostics
+## Controls
 
-## Important limitations
-
-- The flow solver is deliberately crude and CPU-based.
-- Horizontal wind is prescribed rather than fully prognostic.
-- The rotating-updraft control is an imposed bias, not a resolved mesocyclone.
-- Cloud rendering uses soft point sprites, not true volumetric ray marching.
-- No ice, hail, radiation, real sounding import, real terrain import, pressure solve or Coriolis yet.
-- The original 2D sandbox remains untouched outside this folder.
+- **Left drag:** use the selected tool
+- **Ctrl / Command + left drag:** invert the tool
+- **Right drag:** orbit
+- **Middle drag:** pan
+- **Mouse wheel:** zoom
+- **B + mouse wheel:** change brush diameter
+- **Space:** pause/resume
+- **R:** reset the current scenario
+- **1–7:** switch display modes
+- **F/T/M/U/V/L/O/X:** select inspect, temperature, moisture, updraft, wind, land, sea or fire
 
 ## Running
 
 Serve the repository over HTTP and open `3d-prototype/index.html`.
 
-The prototype imports a pinned Three.js build from jsDelivr, so an internet connection is required for the renderer modules.
+The renderer imports a pinned Three.js build from jsDelivr, so the first load requires an internet connection.
+
+## Scope
+
+This is an interactive educational model, not a forecast or research core such as CM1. The atmospheric fields and feedbacks are simulated, but pressure, turbulence, radiation and microphysics use deliberately inexpensive approximations so the model can run interactively in a browser.
