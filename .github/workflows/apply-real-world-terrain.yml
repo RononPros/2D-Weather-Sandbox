@@ -1,0 +1,46 @@
+name: Apply real-world terrain integration
+
+on:
+  push:
+    branches:
+      - feature/real-world-terrain-import
+    paths:
+      - scripts/apply_real_world_terrain.py
+      - .github/workflows/apply-real-world-terrain.yml
+      - .terrain-patch-trigger
+
+permissions:
+  contents: write
+
+jobs:
+  apply-patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/real-world-terrain-import
+
+      - name: Apply integration patch
+        run: python3 scripts/apply_real_world_terrain.py
+
+      - name: Basic JavaScript syntax checks
+        run: |
+          node --check terrainImport.js
+          node --check app.js
+
+      - name: Check diff whitespace
+        run: git diff --check
+
+      - name: Commit generated integration changes
+        run: |
+          if git diff --quiet; then
+            echo "Patch already applied; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js index.html shaders/fragment/setupShader.frag
+          git commit -m "Integrate real-world terrain profiles"
+          git push origin HEAD:feature/real-world-terrain-import
