@@ -4,6 +4,10 @@ Previously called "Weather_Sim_4"
 
 This projects aims to produce a semirealistic two-dimensional, realtime, interactive simulation of the weather in earth's troposphere.
 
+## Interactive 3D sandbox
+
+The repository also includes a rebuilt [3D Weather Sandbox](./3d-prototype/). It keeps the original game's direct-editing workflow while adding an orbitable 3D atmospheric grid, terrain and sea painting, seven scientific display modes, 3D wind and buoyancy, precipitation, live diagnostics, and local save files.
+
 
 ## Clouds and precipitation
 Simulating clouds and precipitation are the main objectives of this project.
