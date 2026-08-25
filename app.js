@@ -152,10 +152,10 @@ function rawSoundingToSimSounding(soundingData, simHeight, inSimSoundingRes)
 
   for (let y = 0; y < inSimSoundingRes; y++) {
 
-    const inSimAlt = y * (simHeight / sim_res_y);
+    const inSimAlt = (window.realWorldTerrain?.enabled ? window.realWorldTerrain.baseAltitude : 0) + y * (simHeight / sim_res_y);
 
-    while (soundingData[soundingDataIndex]['alt'] < inSimAlt ||
-           sampleIsInvalid(soundingData[soundingDataIndex])) { // go up in the sounding until the altitude matches, or is more than the in sim altitude
+    while (soundingDataIndex > 0 && (soundingData[soundingDataIndex]['alt'] < inSimAlt ||
+           sampleIsInvalid(soundingData[soundingDataIndex]))) { // go up in the sounding until the altitude matches, or is more than the in sim altitude
       soundingDataIndex--;
     }
 
@@ -3393,6 +3393,13 @@ async function mainScript(initialBaseTex, initialWaterTex, initialWallTex, initi
       guiControls.latitude = startLatitude;
     }
 
+    // A real-world cross-section has physical end points, so do not wrap it around.
+    if (window.realWorldTerrain?.enabled) {
+      guiControls.wrapHorizontally = false;
+      cam.wrapHorizontally = false;
+      horizontalDisplayMult = 1.0;
+    }
+
   } else {
     setupDatGui(guiControlsFromSaveFile);                     // use settings from save file
 
@@ -5498,7 +5505,7 @@ async function mainScript(initialBaseTex, initialWaterTex, initialWallTex, initi
   var initial_T = new Float32Array(504); // sim_res_y + 1
 
   for (var y = 0; y < sim_res_y + 1; y++) {
-    let altitude = y / (sim_res_y + 1) * guiControls.simHeight;
+    let altitude = (window.realWorldTerrain?.enabled ? window.realWorldTerrain.baseAltitude : 0) + y / (sim_res_y + 1) * guiControls.simHeight;
     var realTemp = Math.max(map_range(altitude, 0, 12000, 15.0, -70.0), -60);
 
     initial_T[y] = realToPotentialT(CtoK(realTemp), y); // initial temperature profile
@@ -5506,12 +5513,38 @@ async function mainScript(initialBaseTex, initialWaterTex, initialWallTex, initi
 
   cellHeight = guiControls.simHeight / sim_res_y; // in meters
 
+  // Optional real-world terrain profile. The CPU-side loader resamples the DEM
+  // to exactly one elevation value per model column, then the setup shader
+  // turns every cell below that elevation into terrain.
+  const hasRealTerrain = Boolean(window.realWorldTerrain?.enabled && window.realWorldTerrain.elevations?.length);
+  const terrainBaseAltitude = hasRealTerrain ? Number(window.realWorldTerrain.baseAltitude || 0) : 0;
+  const terrainSeaLevel = hasRealTerrain ? Number(window.realWorldTerrain.seaLevel || 0) : 0;
+  const terrainSeaAsWater = hasRealTerrain ? Boolean(window.realWorldTerrain.seaAsWater) : false;
+  const terrainProfileTexture = gl.createTexture();
+  const terrainProfileData = hasRealTerrain
+    ? window.getRealWorldTerrainProfile(sim_res_x)
+    : new Float32Array(sim_res_x);
+
+  gl.activeTexture(gl.TEXTURE11);
+  gl.bindTexture(gl.TEXTURE_2D, terrainProfileTexture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, sim_res_x, 1, 0, gl.RED, gl.FLOAT, terrainProfileData);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.activeTexture(gl.TEXTURE0);
+
   // Set constant uniforms
   gl.useProgram(setupProgram);
   gl.uniform2f(gl.getUniformLocation(setupProgram, 'texelSize'), texelSizeX, texelSizeY);
   gl.uniform2f(gl.getUniformLocation(setupProgram, 'resolution'), sim_res_x, sim_res_y);
   gl.uniform1f(gl.getUniformLocation(setupProgram, 'dryLapse'), dryLapse);
   gl.uniform1f(gl.getUniformLocation(setupProgram, 'simHeight'), guiControls.simHeight);
+  gl.uniform1i(gl.getUniformLocation(setupProgram, 'useRealTerrain'), hasRealTerrain ? 1 : 0);
+  gl.uniform1i(gl.getUniformLocation(setupProgram, 'terrainProfileTex'), 11);
+  gl.uniform1f(gl.getUniformLocation(setupProgram, 'terrainBaseAltitude'), terrainBaseAltitude);
+  gl.uniform1f(gl.getUniformLocation(setupProgram, 'terrainSeaLevel'), terrainSeaLevel);
+  gl.uniform1i(gl.getUniformLocation(setupProgram, 'terrainSeaAsWater'), terrainSeaAsWater ? 1 : 0);
 
   gl.uniform4fv(gl.getUniformLocation(setupProgram, 'initial_Tv'), initial_T);
 
@@ -5771,6 +5804,11 @@ async function mainScript(initialBaseTex, initialWaterTex, initialWallTex, initi
       gl.disable(gl.BLEND);
       gl.viewport(0, 0, sim_res_x, sim_res_y);
       gl.useProgram(setupProgram);
+      if (hasRealTerrain) {
+        gl.activeTexture(gl.TEXTURE11);
+        gl.bindTexture(gl.TEXTURE_2D, terrainProfileTexture);
+        gl.activeTexture(gl.TEXTURE0);
+      }
       gl.uniform1f(gl.getUniformLocation(setupProgram, 'seed'), mouseXinSim);
       gl.uniform1f(gl.getUniformLocation(setupProgram, 'heightMult'), ((canvas.height - mouseY) / canvas.height) * 2.0);
       // Render to both framebuffers
