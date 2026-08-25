@@ -126,6 +126,13 @@
     }
   }
   </script>
+  <script>
+    function setStatus(message) {
+      const element = document.getElementById('status');
+      if (element)
+        element.textContent = message;
+    }
+  </script>
 </head>
 <body>
   <div id="app">
