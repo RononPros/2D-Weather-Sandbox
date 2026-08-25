@@ -76,6 +76,26 @@
             opacity: 1;
         }
 
+        .nav-icons .nav-3d {
+            display: inline-flex;
+            align-items: center;
+            min-height: 40px;
+            padding: 0 14px;
+            border: 1px solid rgba(112, 207, 255, 0.55);
+            border-radius: 999px;
+            background: rgba(20, 126, 190, 0.3);
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .nav-icons .nav-3d:hover {
+            transform: translateY(-1px);
+            background: rgba(20, 145, 220, 0.5);
+        }
+
         .resolution-warning {
             margin-top: 4rem;
             max-width: 1200px;
@@ -271,6 +291,7 @@
             <h1>2D Weather Sandbox</h1>
         </div>
         <div class="nav-icons">
+            <a class="nav-3d" href="./3d-prototype/">Open 3D Sandbox</a>
             <a href="https://github.com/niels747/2D-Weather-Sandbox" target="_blank" rel="noopener noreferrer">
                 <img src="resources/img/Github.png" alt="GitHub">
             </a>
